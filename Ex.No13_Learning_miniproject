@@ -1,79 +1,96 @@
-# Ex.No: 13 Learning – Use Supervised Learning  
-
-### DATE:                                                                            
+# Ex.No: 13 MINI PROJECT  
+### DATE: 23/05/2025                                                                          
 ### REGISTER NUMBER : 212222040148
-
 ### AIM: 
-To write a program to train the classifier for a Medicine Recommendation System using Supervised Learning (SVM algorithm).
-
+To train a classifier model for accurately predicting or categorizing target variables, enhancing decision-making in specified applications.
 ###  Algorithm:
-1.Start the program.
-
-2.Import the required libraries (pandas, sklearn, etc.).
-
-3.Load the dataset containing symptoms and diseases.
-
-4.Preprocess the data (remove nulls, encode values).
-
-5.Split the data into training and testing sets.
-
-6.Train the Support Vector Machine (SVM) classifier using the training data.
-
-7.Predict the disease for given input symptoms using the trained model.
-
-8.Recommend suitable medicines based on the predicted disease.
-
-9.Display the prediction and medicine suggestions.
-
-10.End the program.
 
 ### Program:
-```
-from flask import Flask, request, render_template
-import numpy as np
+```python
 import pandas as pd
-import pickle
-app = Flask(__name__)
-# Load trained SVM model and required datasets
-model = pickle.load(open('model/svc.pkl', 'rb'))
-description = pd.read_csv("datasets/description.csv")
-precautions = pd.read_csv("datasets/precautions_df.csv")
-medications = pd.read_csv('datasets/medications.csv')
-diets = pd.read_csv("datasets/diets.csv")
-workout = pd.read_csv("datasets/workout_df.csv")
-# Mapping of symptoms to indexes and disease labels
-symptoms_dict = {'itching': 0, 'skin_rash': 1, 'nodal_skin_eruptions': 2, 'continuous_sneezing': 3, ...}
-diseases_list = {15: 'Fungal infection', 4: 'Allergy', 16: 'GERD', ...}
-# Predict disease based on user symptoms
-def predict_disease(symptoms):
-    input_vector = np.zeros(len(symptoms_dict))
-    for symptom in symptoms:
-        if symptom in symptoms_dict:
-            input_vector[symptoms_dict[symptom]] = 1
-    return diseases_list[model.predict([input_vector])[0]]
-# Fetch additional details for predicted disease
-def get_info(disease):
-    desc = description[description['Disease'] == disease]['Description'].values[0]
-    prec = precautions[precautions['Disease'] == disease].iloc[0, 1:].tolist()
-    meds = medications[medications['Disease'] == disease]['Medication'].tolist()
-    diet = diets[diets['Disease'] == disease]['Diet'].tolist()
-    work = workout[workout['disease'] == disease]['workout'].tolist()
-    return desc, prec, meds, diet, work
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        user_input = request.form.get('symptoms')
-        symptoms = [s.strip() for s in user_input.split(',')]
-        disease = predict_disease(symptoms)
-        desc, prec, meds, diet, work = get_info(disease)
-        return render_template('index.html', predicted_disease=disease, dis_des=desc, my_precautions=prec, medications=meds, my_diet=diet, workout=work)
-    return render_template('index.html')
-if __name__ == '__main__':
-    app.run(debug=True)
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from sklearn.model_selection import train_test_split
+
+# Load and preprocess data
+url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00492/Metro_Interstate_Traffic_Volume.csv.gz'
+df = pd.read_csv(url, compression='gzip')
+df['date_time'] = pd.to_datetime(df['date_time'])
+df = df[['date_time', 'traffic_volume']]
+df.set_index('date_time', inplace=True)
+
+# Visualize data
+plt.figure(figsize=(10, 6))
+plt.plot(df['traffic_volume'], label='Traffic Volume')
+plt.title('Traffic Volume Over Time')
+plt.xlabel('Time')
+plt.ylabel('Traffic Volume')
+plt.legend()
+plt.show()
+
+# Normalize data
+scaler = MinMaxScaler(feature_range=(0, 1))
+df_scaled = scaler.fit_transform(df)
+
+# Create sequences
+def create_sequences(data, sequence_length):
+    sequences = []
+    labels = []
+    for i in range(len(data) - sequence_length):
+        sequences.append(data[i:i + sequence_length])
+        labels.append(data[i + sequence_length])
+    return np.array(sequences), np.array(labels)
+
+sequence_length = 24
+X, y = create_sequences(df_scaled, sequence_length)
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Build model
+model = Sequential()
+model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
+model.add(Dropout(0.2))
+model.add(LSTM(units=50, return_sequences=False))
+model.add(Dropout(0.2))
+model.add(Dense(units=1))
+
+# Compile and train model
+model.compile(optimizer='adam', loss='mean_squared_error')
+history = model.fit(X_train, y_train, epochs=10, batch_size=64, validation_data=(X_test, y_test))
+
+# Plot training history
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Model Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Make predictions
+predictions = model.predict(X_test)
+predictions = scaler.inverse_transform(predictions)
+y_test = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+# Plot actual vs. predicted values
+plt.figure(figsize=(10, 6))
+plt.plot(y_test, label='Actual Traffic Volume')
+plt.plot(predictions, label='Predicted Traffic Volume')
+plt.title('Actual vs Predicted Traffic Volume')
+plt.xlabel('Time')
+plt.ylabel('Traffic Volume')
+plt.legend()
+plt.show()
+
 ```
-### OUTPUT:
-![Screenshot 2025-05-13 103209](https://github.com/user-attachments/assets/49b13ca9-2000-4f25-9f86-3f5f42b1186e)
-![Screenshot 2025-05-13 103320](https://github.com/user-attachments/assets/7b039801-d06e-4431-a8d5-a122bc0ff7c9)
+
+### Output:
+![Screenshot 2024-11-09 152431](https://github.com/user-attachments/assets/e525e515-7d8f-4a0a-b779-8ff301615c8a)
+
 
 ### Result:
 Thus the system was trained successfully and the prediction was carried out.
